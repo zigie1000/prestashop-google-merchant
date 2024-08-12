@@ -1,0 +1,1 @@
+# prestashop-google-merchant
