@@ -109,7 +109,7 @@ class googlemerchant extends Module
         $sql->select('pl.name, p.id_product, pl.link_rewrite, i.id_image');
         $sql->from('product', 'p');
         $sql->leftJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)Context::getContext()->language->id);
-        $sql->leftJoin('image', 'i', 'i.id_product = p.id_product AND i.cover = 1'); // Adjusted for the correct image
+        $sql->leftJoin('image', 'i', 'i.id_product = p.id_product AND i.cover = 1');
         $sql->where('p.active = 1');
         return Db::getInstance()->executeS($sql);
     }
