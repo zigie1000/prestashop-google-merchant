@@ -123,9 +123,12 @@ class googlemerchant extends Module
         header('Content-Type: application/xml');
         
         $xml = new SimpleXMLElement('<xml/>');
-        $item = $xml->addChild('item');
-        $item->addChild('id', 1);
-        $item->addChild('title', 'Test Product');
+        
+        for ($i = 1; $i <= 3; $i++) {
+            $item = $xml->addChild('item');
+            $item->addChild('id', $i);
+            $item->addChild('title', 'Test Product ' . $i);
+        }
 
         echo $xml->asXML();
         exit;
