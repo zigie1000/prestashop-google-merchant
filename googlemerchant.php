@@ -2,7 +2,6 @@
 if (!defined('_PS_VERSION_')) {
     exit;
 }
-
 class googlemerchant extends Module
 {
     private $feedFile;
