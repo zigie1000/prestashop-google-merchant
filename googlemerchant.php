@@ -74,14 +74,18 @@ class googlemerchant extends Module
         );
 
         $helper = new HelperForm();
+
+        // Module, token and currentIndex
         $helper->module = $this;
         $helper->name_controller = $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
 
+        // Language
         $helper->default_form_language = $default_lang;
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
 
+        // Title and toolbar
         $helper->title = $this->displayName;
         $helper->show_toolbar = true;
         $helper->toolbar_scroll = true;
@@ -106,10 +110,12 @@ class googlemerchant extends Module
     public function getProducts()
     {
         $sql = new DbQuery();
-        $sql->select('pl.name, p.id_product, pl.link_rewrite, i.id_image');
+        $sql->select('pl.name, p.id_product, pl.link_rewrite, i.id_image, p.price, m.name AS manufacturer, p.ean13 AS gtin, p.reference AS mpn, sa.quantity');
         $sql->from('product', 'p');
         $sql->leftJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)Context::getContext()->language->id);
         $sql->leftJoin('image', 'i', 'i.id_product = p.id_product AND i.cover = 1');
+        $sql->leftJoin('manufacturer', 'm', 'm.id_manufacturer = p.id_manufacturer');
+        $sql->leftJoin('stock_available', 'sa', 'p.id_product = sa.id_product');
         $sql->where('p.active = 1');
         return Db::getInstance()->executeS($sql);
     }
@@ -131,11 +137,15 @@ class googlemerchant extends Module
             $item = $channel->addChild('item');
             $item->addChild('g:id', $product['id_product']);
             $item->addChild('g:title', htmlspecialchars($product['name']));
+            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:condition', 'new');
-            $item->addChild('g:availability', 'in stock');
-            $item->addChild('g:price', '100.00 USD');
+            $item->addChild('g:availability', ($product['quantity'] > 0 ? 'in stock' : 'out of stock'));
+            $item->addChild('g:price', Tools::displayPrice($product['price']));
+            $item->addChild('g:brand', htmlspecialchars($product['manufacturer']));
+            $item->addChild('g:mpn', htmlspecialchars($product['mpn']));
+            $item->addChild('g:gtin', htmlspecialchars($product['gtin']));
         }
 
         $feed_path = _PS_MODULE_DIR_ . $this->name . '/feed.xml';
