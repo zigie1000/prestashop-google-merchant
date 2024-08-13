@@ -112,10 +112,12 @@ class googlemerchant extends Module
             $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
         }
 
-        // Set Content-Type to XML for correct rendering in browser or API clients
-        header('Content-Type: application/xml');
+        // Ensure proper XML content-type
+        header('Content-Type: application/xml; charset=utf-8');
         
-        return $xml->asXML();
+        // Print out XML with a declaration at the beginning
+        echo $xml->asXML();
+        exit;
     }
 
     public function getProducts()
