@@ -1,8 +1,4 @@
 <?php
-if (!defined('_PS_VERSION_')) {
-    exit;
-}
-
 class googlemerchant extends Module
 {
     public function __construct()
@@ -10,8 +6,9 @@ class googlemerchant extends Module
         $this->name = 'googlemerchant';
         $this->tab = 'administration';
         $this->version = '1.0.0';
-        $this->author = 'Marco Zagato';
+        $this->author = 'Your Name';
         $this->need_instance = 0;
+        $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
         $this->bootstrap = true;
 
         parent::__construct();
@@ -19,17 +16,22 @@ class googlemerchant extends Module
         $this->displayName = $this->l('Google Merchant Center Feed');
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
 
-        $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
+        $this->confirmUninstall = $this->l('Are you sure you want to uninstall?');
+
+        if (!Configuration::get('googlemerchant')) {
+            $this->warning = $this->l('No name provided');
+        }
     }
 
     public function install()
     {
-        return parent::install() && $this->registerHook('displayBackOfficeHeader');
+        return parent::install() &&
+            $this->registerHook('displayBackOfficeHeader');
     }
 
-    public function hookDisplayBackOfficeHeader()
+    public function hookDisplayBackOfficeHeader($params)
     {
-        $this->context->controller->addCSS($this->_path . 'views/css/googlemerchant.css');
+        $this->context->controller->addCSS($this->_path . 'views/css/googlemerchant.css', 'all');
         $this->context->controller->addJS($this->_path . 'views/js/googlemerchant.js');
     }
 
@@ -37,97 +39,106 @@ class googlemerchant extends Module
     {
         $output = null;
 
-        if (Tools::isSubmit('submit' . $this->name)) {
-            $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url || empty($url)) {
-                $output .= $this->displayError($this->l('Invalid URL value'));
+        if (Tools::isSubmit('submit'.$this->name)) {
+            $googlemerchant_name = strval(Tools::getValue('googlemerchant_NAME'));
+            if (!$googlemerchant_name
+              || empty($googlemerchant_name)
+              || !Validate::isGenericName($googlemerchant_name)) {
+                $output .= $this->displayError($this->l('Invalid Configuration value'));
             } else {
-                Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
+                Configuration::updateValue('googlemerchant_NAME', $googlemerchant_name);
                 $output .= $this->displayConfirmation($this->l('Settings updated'));
             }
         }
-
-        return $output . $this->renderForm();
+        return $output.$this->displayForm();
     }
 
-    public function renderForm()
+    public function displayForm()
     {
-        $fields_form = array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('Google Merchant Center Feed'),
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Feed URL'),
-                        'name' => 'GOOGLEMERCHANT_FEED_URL',
-                        'size' => 20,
-                        'required' => true,
-                    )
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                    'class' => 'btn btn-default pull-right'
+        // Get default language
+        $default_lang = (int)Configuration::get('PS_LANG_DEFAULT');
+
+        // Init Fields form array
+        $fields_form[0]['form'] = array(
+            'legend' => array(
+                'title' => $this->l('Settings'),
+            ),
+            'input' => array(
+                array(
+                    'type' => 'text',
+                    'label' => $this->l('Feed URL'),
+                    'name' => 'googlemerchant_NAME',
+                    'size' => 20,
+                    'required' => true
                 )
             ),
+            'submit' => array(
+                'title' => $this->l('Save'),
+                'class' => 'btn btn-default pull-right'
+            )
         );
 
         $helper = new HelperForm();
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
+
+        // Module, token and currentIndex
         $helper->module = $this;
-        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submit' . $this->name;
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->name_controller = $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->tpl_vars = array(
-            'fields_value' => array(
-                'GOOGLEMERCHANT_FEED_URL' => Tools::getValue('GOOGLEMERCHANT_FEED_URL', Configuration::get('GOOGLEMERCHANT_FEED_URL')),
+        $helper->currentIndex = AdminController::$currentIndex.'&configure='.$this->name;
+
+        // Language
+        $helper->default_form_language = $default_lang;
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+
+        // Title and toolbar
+        $helper->title = $this->displayName;
+        $helper->show_toolbar = true;        // false -> remove toolbar
+        $helper->toolbar_scroll = true;      // yes - > Toolbar is always visible on the top of the screen.
+        $helper->submit_action = 'submit'.$this->name;
+        $helper->toolbar_btn = array(
+            'save' =>
+            array(
+                'desc' => $this->l('Save'),
+                'href' => AdminController::$currentIndex.'&configure='.$this->name.'&save'.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules'),
             ),
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
+            'back' => array(
+                'href' => AdminController::$currentIndex.'&token='.Tools::getAdminTokenLite('AdminModules'),
+                'desc' => $this->l('Back to list')
+            )
         );
 
-        return $helper->generateForm(array($fields_form));
+        // Load current value
+        $helper->fields_value['googlemerchant_NAME'] = Configuration::get('googlemerchant_NAME');
+
+        return $helper->generateForm($fields_form);
+    }
+
+    public function getProducts()
+    {
+        $sql = new DbQuery();
+        $sql->select('p.id_product, p.name, p.link_rewrite, i.id_image');
+        $sql->from('product', 'p');
+        $sql->leftJoin('product_lang', 'pl', 'pl.id_product = p.id_product');
+        $sql->leftJoin('image', 'i', 'i.id_product = p.id_product');
+        $sql->where('pl.id_lang = '.(int)Context::getContext()->language->id);
+        $sql->where('p.active = 1');
+        return Db::getInstance()->executeS($sql);
     }
 
     public function generateFeed()
     {
         $products = $this->getProducts();
+
         $xml = new SimpleXMLElement('<products/>');
 
         foreach ($products as $product) {
             $item = $xml->addChild('product');
             $item->addChild('id', $product['id_product']);
-            $item->addChild('title', htmlspecialchars($product['name']));
-            $item->addChild('description', htmlspecialchars(strip_tags($product['description'])));
-            $item->addChild('link', $this->context->link->getProductLink($product['id_product']));
-            $item->addChild('image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
-            $item->addChild('condition', 'new');
-            $item->addChild('price', Tools::displayPrice($product['price']));
-            $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+            $item->addChild('name', $product['name']);
+            $item->addChild('link', Context::getContext()->link->getProductLink($product['id_product']));
+            $item->addChild('image', Context::getContext()->link->getImageLink($product['link_rewrite'], $product['id_image']));
         }
 
-        // Ensure proper XML content-type
-        header('Content-Type: application/xml; charset=utf-8');
-        
-        // Print out XML with a declaration at the beginning
-        echo $xml->asXML();
-        exit;
-    }
-
-    public function getProducts()
-    {
-        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity
-                FROM ' . _DB_PREFIX_ . 'product p
-                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
-                LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
-                WHERE p.active = 1';
-
-        return Db::getInstance()->executeS($sql);
+        return $xml->asXML();
     }
 }
