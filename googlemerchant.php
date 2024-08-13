@@ -23,11 +23,9 @@ class googlemerchant extends Module
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
 
-        // Initialize cache and log file paths
         $this->cacheFile = _PS_MODULE_DIR_ . $this->name . '/cache/feed.xml';
         $this->logFile = _PS_MODULE_DIR_ . $this->name . '/logs/feed_errors.log';
 
-        // Ensure cache and log directories exist
         $this->createDirectoryIfNotExists(_PS_MODULE_DIR_ . $this->name . '/cache');
         $this->createDirectoryIfNotExists(_PS_MODULE_DIR_ . $this->name . '/logs');
     }
@@ -123,7 +121,6 @@ class googlemerchant extends Module
     public function generateFeed()
     {
         if (file_exists($this->cacheFile) && (time() - filemtime($this->cacheFile)) < 86400) {
-            // Serve cached file if it's less than 24 hours old
             return file_get_contents($this->cacheFile);
         }
 
@@ -137,7 +134,6 @@ class googlemerchant extends Module
 
         foreach ($products as $product) {
             try {
-                // Data validation before adding to feed
                 if (!$this->validateProductData($product)) {
                     $this->logError('Invalid product data for product ID ' . $product['id_product']);
                     continue;
@@ -158,7 +154,6 @@ class googlemerchant extends Module
             }
         }
 
-        // Save the feed to cache
         $feed = $xml->asXML();
         if ($feed !== false) {
             file_put_contents($this->cacheFile, $feed);
