@@ -127,12 +127,12 @@ class googlemerchant extends Module
         header('Content-Type: application/xml; charset=utf-8');
 
         // Create XML structure
-        $xml = new SimpleXMLElement('<xml/>');
+        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><products></products>');
         
         for ($i = 1; $i <= 3; $i++) {
-            $item = $xml->addChild('item');
-            $item->addChild('id', $i);
-            $item->addChild('title', 'Test Product ' . $i);
+            $product = $xml->addChild('product');
+            $product->addChild('id', $i);
+            $product->addChild('name', 'Test Product ' . $i);
         }
 
         // Output XML
