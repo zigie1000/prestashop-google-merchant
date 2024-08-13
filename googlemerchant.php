@@ -5,36 +5,20 @@ if (!defined('_PS_VERSION_')) {
 
 class googlemerchant extends Module
 {
-    private $cacheFile;
-    private $logFile;
-
     public function __construct()
     {
         $this->name = 'googlemerchant';
         $this->tab = 'administration';
         $this->version = '1.0.0';
-        $this->author = 'Your Name';
+        $this->author = 'Marco Zagato';
         $this->need_instance = 0;
         $this->bootstrap = true;
 
         parent::__construct();
 
         $this->displayName = $this->l('Google Merchant Center Feed');
-        $this->description = $this->l('Generate a product feed for Google Merchant Center.');
+        $this->description = $this->l('Generate a product feed for Google Merchant Center');
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
-
-        $this->cacheFile = _PS_MODULE_DIR_ . $this->name . '/cache/feed.xml';
-        $this->logFile = _PS_MODULE_DIR_ . $this->name . '/logs/feed_errors.log';
-
-        $this->createDirectoryIfNotExists(_PS_MODULE_DIR_ . $this->name . '/cache');
-        $this->createDirectoryIfNotExists(_PS_MODULE_DIR_ . $this->name . '/logs');
-    }
-
-    private function createDirectoryIfNotExists($directory)
-    {
-        if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
     }
 
     public function install()
@@ -53,108 +37,117 @@ class googlemerchant extends Module
         $output = null;
 
         if (Tools::isSubmit('submit'.$this->name)) {
-            $this->postProcess();
-            $output .= $this->displayConfirmation($this->l('Settings updated'));
+            $feed_url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
+            if (!$feed_url || empty($feed_url)) {
+                $output .= $this->displayError($this->l('Invalid Feed URL'));
+            } else {
+                Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $feed_url);
+                $output .= $this->displayConfirmation($this->l('Settings updated'));
+            }
         }
 
-        return $output.$this->renderForm();
+        return $output.$this->displayForm();
     }
 
-    protected function renderForm()
+    public function displayForm()
     {
-        $helper = new HelperForm();
+        // Get default language
+        $default_lang = (int)Configuration::get('PS_LANG_DEFAULT');
 
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submit'.$this->name;
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->tpl_vars = array(
-            'fields_value' => $this->getConfigFormValues(),
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
-        );
-
-        return $helper->generateForm(array($this->getConfigForm()));
-    }
-
-    protected function getConfigForm()
-    {
-        return array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Feed URL'),
-                        'name' => 'GOOGLEMERCHANT_FEED_URL',
-                        'required' => true,
-                    ),
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
+        // Init Fields form array
+        $fields_form[0]['form'] = array(
+            'legend' => array(
+                'title' => $this->l('Settings'),
             ),
+            'input' => array(
+                array(
+                    'type' => 'text',
+                    'label' => $this->l('Feed URL'),
+                    'name' => 'GOOGLEMERCHANT_FEED_URL',
+                    'size' => 20,
+                    'required' => true
+                )
+            ),
+            'submit' => array(
+                'title' => $this->l('Save'),
+                'class' => 'btn btn-default pull-right'
+            )
         );
-    }
 
-    protected function getConfigFormValues()
-    {
-        return array(
-            'GOOGLEMERCHANT_FEED_URL' => Configuration::get('GOOGLEMERCHANT_FEED_URL', ''),
-        );
-    }
+        $helper = new HelperForm();
+        $helper->module = $this;
+        $helper->name_controller = $this->name;
+        $helper->identifier = $this->identifier;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->currentIndex = AdminController::$currentIndex.'&configure='.$this->name;
+        $helper->default_form_language = $default_lang;
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
 
-    protected function postProcess()
-    {
-        Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
+        // Load current value
+        $helper->fields_value['GOOGLEMERCHANT_FEED_URL'] = Configuration::get('GOOGLEMERCHANT_FEED_URL');
+
+        return $helper->generateForm($fields_form);
     }
 
     public function generateFeed()
     {
-        // Clear any output buffer
-        ob_clean();
+        // Get the products
+        $products = $this->getProducts();
 
-        // Send the XML header
-        header('Content-Type: application/xml; charset=utf-8');
+        // Start building the XML feed
+        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
 
-        // Create XML structure
-        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><products></products>');
-        
-        for ($i = 1; $i <= 3; $i++) {
-            $product = $xml->addChild('product');
-            $product->addChild('id', $i);
-            $product->addChild('name', 'Test Product ' . $i);
+        $channel = $xml->addChild('channel');
+        $channel->addChild('title', 'Dealbrut Store');
+        $channel->addChild('link', 'https://dealbrut.com');
+        $channel->addChild('description', 'Dealbrut Product Feed');
+
+        foreach ($products as $product) {
+            $item = $channel->addChild('item');
+            $item->addChild('g:id', $product['id']);
+            $item->addChild('g:title', htmlspecialchars($product['title']));
+            $item->addChild('g:description', htmlspecialchars($product['description']));
+            $item->addChild('g:link', $product['link']);
+            $item->addChild('g:image_link', $product['image_link']);
+            $item->addChild('g:price', $product['price'] . ' USD');
+            $item->addChild('g:condition', $product['condition']);
+            $item->addChild('g:availability', $product['availability']);
+            $item->addChild('g:brand', $product['brand']);
+            $item->addChild('g:mpn', $product['mpn']);
+            $item->addChild('g:gtin', $product['gtin']);
         }
 
-        // Output XML
-        echo $xml->asXML();
-        
-        // Ensure no further output
-        exit;
+        // Save the feed
+        $feed_path = _PS_MODULE_DIR_ . $this->name . '/feed.xml';
+        $xml->asXML($feed_path);
+
+        return $xml->asXML();
     }
 
-    public function hookModuleRoutes($params)
+    private function getProducts()
     {
-        return array(
-            'module-googlemerchant-feed' => array(
-                'controller' => 'feed',
-                'rule' => 'googlemerchant/feed',
-                'keywords' => array(),
-                'params' => array(
-                    'fc' => 'module',
-                    'module' => 'googlemerchant',
-                    'controller' => 'feed',
-                ),
-            ),
-        );
+        // Fetch the products from your store database
+        $sql = 'SELECT p.id_product as id, pl.name as title, pl.description_short as description, 
+                    CONCAT(\'https://dealbrut.com/\', p.id_product, \'-\', pl.link_rewrite) as link,
+                    CONCAT(\'https://dealbrut.com/img/p/\', i.id_image, \'-large_default.jpg\') as image_link,
+                    CONCAT(p.price, \' USD\') as price,
+                    IF(p.quantity > 0, \'in stock\', \'out of stock\') as availability,
+                    m.name as brand,
+                    p.reference as mpn,
+                    p.ean13 as gtin,
+                    \'new\' as condition
+                FROM ' . _DB_PREFIX_ . 'product p
+                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON (p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . ')
+                JOIN ' . _DB_PREFIX_ . 'manufacturer m ON (p.id_manufacturer = m.id_manufacturer)
+                JOIN ' . _DB_PREFIX_ . 'image i ON (p.id_product = i.id_product AND i.cover = 1)
+                WHERE p.active = 1';
+
+        return Db::getInstance()->executeS($sql);
+    }
+
+    public function logError($message)
+    {
+        // Implement logging functionality if needed
+        error_log($message, 3, _PS_MODULE_DIR_ . $this->name . '/logs/errors.log');
     }
 }
