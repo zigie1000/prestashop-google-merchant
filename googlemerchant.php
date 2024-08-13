@@ -120,8 +120,13 @@ class googlemerchant extends Module
 
     public function generateFeed()
     {
+        // Clear any output that might have been sent before
+        ob_clean();
+
+        // Send the XML header
         header('Content-Type: application/xml; charset=utf-8');
 
+        // Generate the XML
         $xml = new SimpleXMLElement('<xml/>');
         
         for ($i = 1; $i <= 3; $i++) {
@@ -130,6 +135,7 @@ class googlemerchant extends Module
             $item->addChild('title', 'Test Product ' . $i);
         }
 
+        // Output the XML
         echo $xml->asXML();
         exit;
     }
