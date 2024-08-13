@@ -1,5 +1,4 @@
 <?php
-
 class GoogleMerchantFeedModuleFrontController extends ModuleFrontController
 {
     public function initContent()
