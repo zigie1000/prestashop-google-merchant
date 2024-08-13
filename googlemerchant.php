@@ -48,99 +48,82 @@ class googlemerchant extends Module
             }
         }
 
-        return $output . $this->displayForm();
+        return $output . $this->renderForm();
     }
 
-    public function displayForm()
+    public function renderForm()
     {
-        $default_lang = (int)Configuration::get('PS_LANG_DEFAULT');
-
-        $fields_form[0]['form'] = array(
-            'legend' => array(
-                'title' => $this->l('Settings'),
-            ),
-            'input' => array(
-                array(
-                    'type' => 'text',
-                    'label' => $this->l('Feed URL'),
-                    'name' => 'GOOGLEMERCHANT_FEED_URL',
-                    'size' => 20,
-                    'required' => true
+        $fields_form = array(
+            'form' => array(
+                'legend' => array(
+                    'title' => $this->l('Google Merchant Center Feed'),
+                ),
+                'input' => array(
+                    array(
+                        'type' => 'text',
+                        'label' => $this->l('Feed URL'),
+                        'name' => 'GOOGLEMERCHANT_FEED_URL',
+                        'size' => 20,
+                        'required' => true,
+                    )
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                    'class' => 'btn btn-default pull-right'
                 )
             ),
-            'submit' => array(
-                'title' => $this->l('Save'),
-                'class' => 'btn btn-default pull-right'
-            )
         );
 
         $helper = new HelperForm();
-
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
         $helper->module = $this;
-        $helper->name_controller = $this->name;
+        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
-        $helper->default_form_language = $default_lang;
-        $helper->allow_employee_form_lang = $default_lang;
-        $helper->title = $this->displayName;
         $helper->submit_action = 'submit' . $this->name;
-        $helper->fields_value['GOOGLEMERCHANT_FEED_URL'] = Configuration::get('GOOGLEMERCHANT_FEED_URL');
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
+            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->tpl_vars = array(
+            'fields_value' => array(
+                'GOOGLEMERCHANT_FEED_URL' => Tools::getValue('GOOGLEMERCHANT_FEED_URL', Configuration::get('GOOGLEMERCHANT_FEED_URL')),
+            ),
+            'languages' => $this->context->controller->getLanguages(),
+            'id_language' => $this->context->language->id,
+        );
 
-        return $helper->generateForm($fields_form);
-    }
-
-    private function getProducts()
-    {
-        // Fetch the products from your store database
-        $sql = 'SELECT p.id_product as id, pl.name as title, pl.description_short as description, 
-                    CONCAT(\'https://dealbrut.com/\', p.id_product, \'-\', pl.link_rewrite) as link,
-                    CONCAT(\'https://dealbrut.com/img/p/\', i.id_image, \'-large_default.jpg\') as image_link,
-                    CONCAT(p.price, \' USD\') as price,
-                    IF(p.quantity > 0, \'in stock\', \'out of stock\') as availability,
-                    m.name as brand,
-                    p.reference as mpn,
-                    p.ean13 as gtin,
-                    `new` as `condition`
-                FROM ' . _DB_PREFIX_ . 'product p
-                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON (p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . ')
-                JOIN ' . _DB_PREFIX_ . 'manufacturer m ON (p.id_manufacturer = m.id_manufacturer)
-                JOIN ' . _DB_PREFIX_ . 'image i ON (p.id_product = i.id_product AND i.cover = 1)
-                WHERE p.active = 1';
-
-        return Db::getInstance()->executeS($sql);
+        return $helper->generateForm(array($fields_form));
     }
 
     public function generateFeed()
     {
         $products = $this->getProducts();
-        $xml = new SimpleXMLElement('<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
-        $channel = $xml->addChild('channel');
-        $channel->addChild('title', 'Dealbrut.com Product Feed');
-        $channel->addChild('link', 'https://dealbrut.com');
-        $channel->addChild('description', 'Google Merchant Center Feed for Dealbrut.com');
+        $xml = new SimpleXMLElement('<products/>');
 
         foreach ($products as $product) {
-            $item = $channel->addChild('item');
-            $item->addChild('g:id', $product['id']);
-            $item->addChild('g:title', $product['title']);
-            $item->addChild('g:description', $product['description']);
-            $item->addChild('g:link', $product['link']);
-            $item->addChild('g:image_link', $product['image_link']);
-            $item->addChild('g:price', $product['price']);
-            $item->addChild('g:availability', $product['availability']);
-            $item->addChild('g:brand', $product['brand']);
-            $item->addChild('g:mpn', $product['mpn']);
-            $item->addChild('g:gtin', $product['gtin']);
-            $item->addChild('g:condition', $product['condition']);
+            $item = $xml->addChild('product');
+            $item->addChild('id', $product['id_product']);
+            $item->addChild('title', htmlspecialchars($product['name']));
+            $item->addChild('description', htmlspecialchars(strip_tags($product['description'])));
+            $item->addChild('link', $this->context->link->getProductLink($product['id_product']));
+            $item->addChild('image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
+            $item->addChild('condition', 'new');
+            $item->addChild('price', Tools::displayPrice($product['price']));
+            $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
         }
 
         return $xml->asXML();
     }
 
-    public function logError($message)
+    public function getProducts()
     {
-        $logFile = _PS_MODULE_DIR_ . $this->name . '/logs/feed_errors.log';
-        file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
+        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity
+                FROM ' . _DB_PREFIX_ . 'product p
+                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
+                WHERE p.active = 1';
+
+        return Db::getInstance()->executeS($sql);
     }
 }
