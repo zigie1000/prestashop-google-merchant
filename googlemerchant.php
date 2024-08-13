@@ -1,19 +1,15 @@
 <?php
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-class GoogleMerchant extends Module
+class googlemerchant extends Module
 {
-    private $logFile;
-    private $cacheFile;
-
     public function __construct()
     {
         $this->name = 'googlemerchant';
         $this->tab = 'administration';
-        $this->version = '1.1.0';
+        $this->version = '1.0.0';
         $this->author = 'Your Name';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -23,10 +19,6 @@ class GoogleMerchant extends Module
         $this->displayName = $this->l('Google Merchant Center Feed');
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
-
-        // Define log and cache file paths
-        $this->logFile = _PS_MODULE_DIR_ . $this->name . '/logs/feed_errors.log';
-        $this->cacheFile = _PS_MODULE_DIR_ . $this->name . '/cache/feed.xml';
     }
 
     public function install()
