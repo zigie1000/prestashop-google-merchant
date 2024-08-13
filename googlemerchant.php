@@ -1,10 +1,14 @@
 <?php
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
 class googlemerchant extends Module
 {
+    private $cacheFile;
+    private $logFile;
+
     public function __construct()
     {
         $this->name = 'googlemerchant';
@@ -19,6 +23,10 @@ class googlemerchant extends Module
         $this->displayName = $this->l('Google Merchant Center Feed');
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
+
+        // Initialize cache and log file paths
+        $this->cacheFile = _PS_MODULE_DIR_ . $this->name . '/cache/feed.xml';
+        $this->logFile = _PS_MODULE_DIR_ . $this->name . '/logs/feed_errors.log';
     }
 
     public function install()
@@ -176,7 +184,9 @@ class googlemerchant extends Module
     private function logError($message)
     {
         $timestamp = date('Y-m-d H:i:s');
-        file_put_contents($this->logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+        if (!empty($this->logFile)) {
+            file_put_contents($this->logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+        }
     }
 
     public function hookModuleRoutes($params)
