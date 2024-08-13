@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -113,6 +112,9 @@ class googlemerchant extends Module
             $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
         }
 
+        // Set Content-Type to XML for correct rendering in browser or API clients
+        header('Content-Type: application/xml');
+        
         return $xml->asXML();
     }
 
