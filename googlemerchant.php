@@ -121,7 +121,7 @@ class googlemerchant extends Module
             $item->addChild('g:id', htmlspecialchars($product['id_product']));
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
-            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
+            $item->addChild('g:description', isset($product['description']) ? htmlspecialchars(strip_tags($product['description'])) : 'No description available');
             $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency->iso_code));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
@@ -147,7 +147,7 @@ class googlemerchant extends Module
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description_short, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, p.weight
+        $sql = 'SELECT p.id_product, pl.name, pl.description_short as description, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, p.weight
                 FROM ' . _DB_PREFIX_ . 'product p
                 JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
