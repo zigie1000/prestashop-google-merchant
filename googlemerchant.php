@@ -1,4 +1,5 @@
 <?php
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -146,13 +147,12 @@ class googlemerchant extends Module
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description_short, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, gpc.google_product_category, p.weight
+        $sql = 'SELECT p.id_product, pl.name, pl.description_short, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, p.weight
                 FROM ' . _DB_PREFIX_ . 'product p
                 JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
                 LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
                 LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
-                LEFT JOIN ' . _DB_PREFIX_ . 'google_product_category gpc ON p.id_product = gpc.id_product
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
