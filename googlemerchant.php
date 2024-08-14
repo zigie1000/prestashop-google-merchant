@@ -123,7 +123,7 @@ class googlemerchant extends Module
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
 
-            // Fix: Ensure valid currency ISO code, default to ZAR if not set
+            // Ensure valid currency and fallback to ZAR if needed
             $currency = $this->context->currency;
             if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
                 $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
