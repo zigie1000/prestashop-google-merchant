@@ -98,34 +98,44 @@ class googlemerchant extends Module
     public function generateFeed()
     {
         $products = $this->getProducts();
-        $xml = new SimpleXMLElement('<products/>');
+        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
+        $channel = $xml->addChild('channel');
+        $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
+        $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
+        $channel->addChild('description', 'Product feed for Google Merchant Center');
 
         foreach ($products as $product) {
-            $item = $xml->addChild('product');
-            $item->addChild('id', $product['id_product']);
-            $item->addChild('title', htmlspecialchars($product['name']));
-            $item->addChild('description', htmlspecialchars(strip_tags($product['description'])));
-            $item->addChild('link', $this->context->link->getProductLink($product['id_product']));
-            $item->addChild('image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
-            $item->addChild('condition', 'new');
-            $item->addChild('price', Tools::displayPrice($product['price']));
-            $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+            $item = $channel->addChild('item');
+            $item->addChild('g:id', $product['id_product']);
+            $item->addChild('g:title', htmlspecialchars($product['name']));
+            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
+            $item->addChild('g:link', $this->context->link->getProductLink($product['id_product']));
+            $item->addChild('g:image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
+            $item->addChild('g:condition', 'new');
+            $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ' . $this->context->currency->iso_code);
+            $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name'] ?: 'Unknown'));
+
+            // Additional Google Merchant Fields
+            $item->addChild('g:gtin', htmlspecialchars($product['gtin'] ?? ''));
+            $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
+            $item->addChild('g:product_type', htmlspecialchars($product['category']));
+            $item->addChild('g:google_product_category', htmlspecialchars($product['google_product_category']));
+            $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
-        // Ensure proper XML content-type
-        header('Content-Type: application/xml; charset=utf-8');
-        
-        // Print out XML with a declaration at the beginning
-        echo $xml->asXML();
-        exit;
+        // Save the XML to a file
+        $xml->asXML(_PS_MODULE_DIR_ . 'googlemerchant/feed.xml');
     }
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity
+        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity, m.name as manufacturer_name, p.gtin, p.weight, cl.name as category, p.google_product_category
                 FROM ' . _DB_PREFIX_ . 'product p
-                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
+                LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
+                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
