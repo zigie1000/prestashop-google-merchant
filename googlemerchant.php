@@ -40,19 +40,6 @@ class googlemerchant extends Module
         $this->context->controller->addJS($this->_path . 'views/js/googlemerchant.js');
     }
 
-    public function getProducts()
-    {
-        $sql = new DbQuery();
-        $sql->select('p.id_product, pl.name, pl.description_short, p.price, pl.link_rewrite, m.name as manufacturer_name, i.id_image, sa.quantity');
-        $sql->from('product', 'p');
-        $sql->leftJoin('product_lang', 'pl', 'p.id_product = pl.id_product AND pl.id_lang = ' . (int)Context::getContext()->language->id);
-        $sql->leftJoin('image', 'i', 'i.id_product = p.id_product AND i.cover = 1');
-        $sql->leftJoin('manufacturer', 'm', 'p.id_manufacturer = m.id_manufacturer');
-        $sql->leftJoin('stock_available', 'sa', 'p.id_product = sa.id_product');
-        $sql->where('p.active = 1');
-        return Db::getInstance()->executeS($sql);
-    }
-
     public function generateFeed()
     {
         $products = $this->getProducts();
@@ -71,29 +58,36 @@ class googlemerchant extends Module
             $item = $channel->addChild('item');
             $item->addChild('g:id', htmlspecialchars($product['id_product']));
             $item->addChild('g:title', htmlspecialchars($product['name']));
-            $item->addChild('g:link', $this->context->link->getProductLink($product['id_product'], $product['link_rewrite']));
+            $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
             $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ' . $this->context->currency->iso_code);
-            $item->addChild('g:image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
-            $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+            $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
+            $item->addChild('g:availability', ($product['quantity'] > 0) ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name'] ?: 'Unknown'));
             $item->addChild('g:condition', 'new');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
         }
 
-        // Check and correct whitespace and empty fields
-        $xmlString = $xml->asXML();
-        $xmlString = trim(preg_replace('/\s+/', ' ', $xmlString)); // Remove extra whitespace
-        file_put_contents($this->feedFile, $xmlString);
-
+        // Save the XML file
+        $xml->asXML($this->feedFile);
         return true;
     }
 
-    public function logError($message)
+    private function getProducts()
     {
-        if (!file_exists($this->logFile)) {
-            file_put_contents($this->logFile, '');
-        }
-        error_log('[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, 3, $this->logFile);
+        $sql = new DbQuery();
+        $sql->select('p.id_product, pl.name, pl.description_short, p.price, pl.link_rewrite, m.name as manufacturer_name, i.id_image, sa.quantity');
+        $sql->from('product', 'p');
+        $sql->leftJoin('product_lang', 'pl', 'p.id_product = pl.id_product AND pl.id_lang = ' . (int)Context::getContext()->language->id);
+        $sql->leftJoin('image', 'i', 'p.id_product = i.id_product AND i.cover = 1');
+        $sql->leftJoin('manufacturer', 'm', 'p.id_manufacturer = m.id_manufacturer');
+        $sql->leftJoin('stock_available', 'sa', 'p.id_product = sa.id_product');
+        $sql->where('p.active = 1');
+        return Db::getInstance()->executeS($sql);
+    }
+
+    private function logError($message)
+    {
+        error_log($message . "\n", 3, $this->logFile);
     }
 }
