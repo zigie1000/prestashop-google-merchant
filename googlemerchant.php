@@ -46,7 +46,7 @@ class googlemerchant extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url || empty($url)) {
+            if (!$url or empty($url)) {
                 $output .= $this->displayError($this->l('Invalid URL value'));
             } else {
                 Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
@@ -84,7 +84,7 @@ class googlemerchant extends Module
         $helper->show_toolbar = false;
         $helper->table = $this->table;
         $helper->module = $this;
-        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+        $helper->default_form_language = (int) Configuration::get('PS_LANG_DEFAULT');
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submit' . $this->name;
@@ -121,8 +121,8 @@ class googlemerchant extends Module
             $item->addChild('g:id', htmlspecialchars($product['id_product']));
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
-            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'] ?? '')));
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency->iso_code ?? 'ZAR'));
+            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
+            $item->addChild('g:price', Tools::displayPrice($product['price'], isset($this->context->currency) && is_object($this->context->currency) ? $this->context->currency->iso_code : 'ZAR'));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
@@ -131,8 +131,8 @@ class googlemerchant extends Module
             $item->addChild('g:condition', 'new');
 
             // Additional fields expected by Google
-            $item->addChild('g:product_type', htmlspecialchars($product['category_name'] ?? ''));
-            $item->addChild('g:google_product_category', htmlspecialchars($product['google_product_category'] ?? ''));
+            $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
+            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
@@ -147,12 +147,12 @@ class googlemerchant extends Module
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, p.weight
+        $sql = 'SELECT p.id_product, pl.name, pl.description_short, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, p.ean13, p.quantity, cl.name as category_name, p.weight
                 FROM ' . _DB_PREFIX_ . 'product p
-                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
+                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int) $this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
                 LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
-                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int) $this->context->language->id . '
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
