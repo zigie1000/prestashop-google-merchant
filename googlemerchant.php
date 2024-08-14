@@ -34,60 +34,101 @@ class googlemerchant extends Module
         $this->context->controller->addJS($this->_path . 'views/js/googlemerchant.js');
     }
 
+    public function getContent()
+    {
+        $output = null;
+
+        if (Tools::isSubmit('submit' . $this->name)) {
+            $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
+            if (!$url || empty($url)) {
+                $output .= $this->displayError($this->l('Invalid URL value'));
+            } else {
+                Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
+                $output .= $this->displayConfirmation($this->l('Settings updated'));
+            }
+        }
+
+        return $output . $this->renderForm();
+    }
+
+    public function renderForm()
+    {
+        $fields_form = array(
+            'form' => array(
+                'legend' => array(
+                    'title' => $this->l('Google Merchant Center Feed'),
+                ),
+                'input' => array(
+                    array(
+                        'type' => 'text',
+                        'label' => $this->l('Feed URL'),
+                        'name' => 'GOOGLEMERCHANT_FEED_URL',
+                        'size' => 20,
+                        'required' => true,
+                    )
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                    'class' => 'btn btn-default pull-right'
+                )
+            ),
+        );
+
+        $helper = new HelperForm();
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
+        $helper->module = $this;
+        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
+        $helper->identifier = $this->identifier;
+        $helper->submit_action = 'submit' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
+            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->tpl_vars = array(
+            'fields_value' => array(
+                'GOOGLEMERCHANT_FEED_URL' => Tools::getValue('GOOGLEMERCHANT_FEED_URL', Configuration::get('GOOGLEMERCHANT_FEED_URL')),
+            ),
+            'languages' => $this->context->controller->getLanguages(),
+            'id_language' => $this->context->language->id,
+        );
+
+        return $helper->generateForm(array($fields_form));
+    }
+
     public function generateFeed()
     {
         $products = $this->getProducts();
-        if (!$products) {
-            $this->logError('No products found.');
-            return false;
-        }
-
-        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
-        $channel = $xml->addChild('channel');
-        $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
-        $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
-        $channel->addChild('description', $this->l('Product feed for Google Merchant Center'));
+        $xml = new SimpleXMLElement('<products/>');
 
         foreach ($products as $product) {
-            $item = $channel->addChild('item');
-            $item->addChild('g:id', htmlspecialchars($product['id_product']));
-            $item->addChild('g:title', htmlspecialchars($product['name']));
-            $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'])));
-            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency));
-            $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
-            $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
-            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']));
-            $item->addChild('g:gtin', !empty($product['ean13']) ? $product['ean13'] : 'Unknown');
-            $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
-            $item->addChild('g:condition', 'new');
+            $item = $xml->addChild('product');
+            $item->addChild('id', $product['id_product']);
+            $item->addChild('title', htmlspecialchars($product['name']));
+            $item->addChild('description', htmlspecialchars(strip_tags($product['description'])));
+            $item->addChild('link', $this->context->link->getProductLink($product['id_product']));
+            $item->addChild('image_link', $this->context->link->getImageLink($product['link_rewrite'], $product['id_image']));
+            $item->addChild('condition', 'new');
+            $item->addChild('price', Tools::displayPrice($product['price']));
+            $item->addChild('availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
         }
 
-        // Save the XML content to the feed.xml file
-        $filePath = _PS_MODULE_DIR_ . 'googlemerchant/feed.xml';
-        $xml->asXML($filePath);
-
-        // Output the XML content
+        // Ensure proper XML content-type
         header('Content-Type: application/xml; charset=utf-8');
+        
+        // Print out XML with a declaration at the beginning
         echo $xml->asXML();
         exit;
     }
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity, m.name as manufacturer_name, p.ean13
+        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity
                 FROM ' . _DB_PREFIX_ . 'product p
                 JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
-                LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
-    }
-
-    private function logError($message)
-    {
-        $logFile = _PS_MODULE_DIR_ . 'googlemerchant/logs/feed_errors.log';
-        file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
     }
 }
