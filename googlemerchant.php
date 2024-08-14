@@ -23,7 +23,6 @@ class googlemerchant extends Module
         $this->displayName = $this->l('Google Merchant Center Feed');
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
-
         $this->feedFile = _PS_MODULE_DIR_ . 'googlemerchant/cache/feed.xml';
         $this->logFile = _PS_MODULE_DIR_ . 'googlemerchant/logs/feed_errors.log';
     }
@@ -47,7 +46,7 @@ class googlemerchant extends Module
             return false;
         }
 
-        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
+        $xml = new SimpleXMLElement('<xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
         $channel = $xml->addChild('channel');
         $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
@@ -57,19 +56,19 @@ class googlemerchant extends Module
             $item = $channel->addChild('item');
             $item->addChild('g:id', htmlspecialchars($product['id_product']));
             $item->addChild('g:title', htmlspecialchars($product['name']));
-            $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'])));
-            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency));
+            $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
+            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
+            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency->iso_code));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
-            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name'] ?: 'Unknown'));
+            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
             $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
 
             // Additional fields expected by Google
-            $item->addChild('g:product_type', htmlspecialchars($product['category_name'] ?? ''));
-            $item->addChild('g:google_product_category', htmlspecialchars($product['google_product_category'] ?? ''));
+            $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
+            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
@@ -84,9 +83,9 @@ class googlemerchant extends Module
 
     public function getProducts()
     {
-        $sql = 'SELECT p.id_product, pl.name, pl.description, p.price, i.id_image, pl.link_rewrite, p.quantity, m.name as manufacturer_name, p.ean13, p.weight, cl.name as category_name, p.google_product_category
+        $sql = 'SELECT p.id_product, pl.name, pl.description_short, p.price, i.id_image, pl.link_rewrite, m.name as manufacturer_name, cl.name as category_name, p.ean13, p.weight, p.quantity
                 FROM ' . _DB_PREFIX_ . 'product p
-                JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
                 LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
                 LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
