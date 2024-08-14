@@ -121,12 +121,22 @@ class googlemerchant extends Module
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', isset($product['description']) ? htmlspecialchars(strip_tags($product['description'])) : 'No description available');
-            
+
             // Ensure the currency object is correctly initialized
-            $currencyIsoCode = isset($this->context->currency->iso_code) ? $this->context->currency->iso_code : 'ZAR';
+            $currency = $this->context->currency;
+            if (!$currency || empty($currency->iso_code)) {
+                $currencyIsoCode = 'ZAR';
+            } else {
+                $currencyIsoCode = $currency->iso_code;
+            }
 
             // Use the correct currency ISO code for displaying the price
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $currencyIsoCode));
+            try {
+                $item->addChild('g:price', Tools::displayPrice($product['price'], $currencyIsoCode));
+            } catch (Exception $e) {
+                $this->logError('Price error: ' . $e->getMessage());
+                $item->addChild('g:price', '0.00 ' . $currencyIsoCode);
+            }
 
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
