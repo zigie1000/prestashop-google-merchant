@@ -22,7 +22,6 @@ class googlemerchant extends Module
 
         $this->displayName = $this->l('Google Merchant Center Feed');
         $this->description = $this->l('Generate a product feed for Google Merchant Center.');
-
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
 
         $this->feedFile = _PS_MODULE_DIR_ . 'googlemerchant/cache/feed.xml';
@@ -62,25 +61,28 @@ class googlemerchant extends Module
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
             $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ' . $this->context->currency->iso_code);
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
-            $item->addChild('g:availability', ($product['quantity'] > 0) ? 'in stock' : 'out of stock');
-            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name'] ?: 'Unknown'));
+            $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name'] ?? 'Unknown'));
             $item->addChild('g:condition', 'new');
-            $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
+            $item->addChild('g:gmpn', htmlspecialchars($product['id_product']));
         }
 
-        // Save the XML file
-        $xml->asXML($this->feedFile);
+        if (!$xml->asXML($this->feedFile)) {
+            $this->logError('Unable to write XML feed to file.');
+            return false;
+        }
+
         return true;
     }
 
-    private function getProducts()
+    public function getProducts()
     {
         $sql = new DbQuery();
         $sql->select('p.id_product, pl.name, pl.description_short, p.price, pl.link_rewrite, m.name as manufacturer_name, i.id_image, sa.quantity');
         $sql->from('product', 'p');
-        $sql->leftJoin('product_lang', 'pl', 'p.id_product = pl.id_product AND pl.id_lang = ' . (int)Context::getContext()->language->id);
-        $sql->leftJoin('image', 'i', 'p.id_product = i.id_product AND i.cover = 1');
-        $sql->leftJoin('manufacturer', 'm', 'p.id_manufacturer = m.id_manufacturer');
+        $sql->leftJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = '.(int)$this->context->language->id);
+        $sql->leftJoin('image', 'i', 'i.id_product = p.id_product AND i.cover = 1');
+        $sql->leftJoin('manufacturer', 'm', 'm.id_manufacturer = p.id_manufacturer');
         $sql->leftJoin('stock_available', 'sa', 'p.id_product = sa.id_product');
         $sql->where('p.active = 1');
         return Db::getInstance()->executeS($sql);
@@ -88,6 +90,6 @@ class googlemerchant extends Module
 
     private function logError($message)
     {
-        error_log($message . "\n", 3, $this->logFile);
+        file_put_contents($this->logFile, '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, FILE_APPEND);
     }
 }
