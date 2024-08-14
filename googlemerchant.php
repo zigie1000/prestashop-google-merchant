@@ -116,19 +116,18 @@ class googlemerchant extends Module
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
         $channel->addChild('description', $this->l('Product feed for Google Merchant Center'));
 
+        // Ensure valid currency and fallback to ZAR if needed
+        $currency = $this->context->currency;
+        if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
+            $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
+        }
+
         foreach ($products as $product) {
             $item = $channel->addChild('item');
             $item->addChild('g:id', htmlspecialchars($product['id_product']));
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
-
-            // Ensure valid currency and fallback to ZAR if needed
-            $currency = $this->context->currency;
-            if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
-                $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
-            }
-
             $item->addChild('g:price', Tools::displayPrice($product['price'], $currency->iso_code));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
