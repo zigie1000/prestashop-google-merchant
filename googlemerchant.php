@@ -119,6 +119,7 @@ class googlemerchant extends Module
         // Ensure valid currency and fallback to ZAR if needed
         $currency = $this->context->currency;
         if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
+            $this->logError('Invalid currency. Defaulting to ZAR.');
             $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
         }
 
