@@ -46,7 +46,7 @@ class googlemerchant extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url || empty($url)) {
+            if (!$url or empty($url)) {
                 $output .= $this->displayError($this->l('Invalid URL value'));
             } else {
                 Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
@@ -84,7 +84,7 @@ class googlemerchant extends Module
         $helper->show_toolbar = false;
         $helper->table = $this->table;
         $helper->module = $this;
-        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+        $helper->default_form_language = (int) Configuration::get('PS_LANG_DEFAULT');
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submit' . $this->name;
@@ -110,21 +110,23 @@ class googlemerchant extends Module
             return false;
         }
 
+        // Ensure the currency is valid and set to ZAR if not
+        $currency = $this->context->currency;
+
+        // Validate that the currency is a proper object and has a valid iso_code
+        if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
+            $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
+            if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
+                $this->logError('Currency not properly set, defaulting to ZAR');
+                return false;
+            }
+        }
+
         $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
         $channel = $xml->addChild('channel');
         $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
         $channel->addChild('description', $this->l('Product feed for Google Merchant Center'));
-
-        // Ensure the currency is valid and set to ZAR if not
-        $currency = $this->context->currency;
-        if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
-            $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
-            if (!isset($currency) || !is_object($currency)) {
-                $this->logError('Currency not properly set, defaulting to ZAR');
-                return false;
-            }
-        }
 
         foreach ($products as $product) {
             $item = $channel->addChild('item');
