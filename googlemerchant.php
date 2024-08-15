@@ -120,6 +120,10 @@ class googlemerchant extends Module
         $currency = $this->context->currency;
         if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
             $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
+            if (!isset($currency) || !is_object($currency)) {
+                $this->logError('Currency not properly set, defaulting to ZAR');
+                return false;
+            }
         }
 
         foreach ($products as $product) {
