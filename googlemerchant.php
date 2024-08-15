@@ -116,10 +116,9 @@ class googlemerchant extends Module
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
         $channel->addChild('description', $this->l('Product feed for Google Merchant Center'));
 
-        // Ensure valid currency and fallback to ZAR if needed
+        // Ensure the currency is valid and set to ZAR if not
         $currency = $this->context->currency;
         if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
-            $this->logError('Invalid currency object, defaulting to ZAR.');
             $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
         }
 
