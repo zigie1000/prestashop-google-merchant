@@ -113,7 +113,7 @@ class googlemerchant extends Module
         // Ensure the currency is valid and set to ZAR if not
         $currency = $this->context->currency;
 
-        // Validate that the currency is a proper object and has a valid iso_code
+        // If currency is not valid, set to default ZAR
         if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
             $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
             if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
