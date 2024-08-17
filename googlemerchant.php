@@ -46,7 +46,7 @@ class googlemerchant extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url or empty($url)) {
+            if (!$url || empty($url)) {
                 $output .= $this->displayError($this->l('Invalid URL value'));
             } else {
                 Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
@@ -84,7 +84,7 @@ class googlemerchant extends Module
         $helper->show_toolbar = false;
         $helper->table = $this->table;
         $helper->module = $this;
-        $helper->default_form_language = (int) Configuration::get('PS_LANG_DEFAULT');
+        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submit' . $this->name;
@@ -110,18 +110,6 @@ class googlemerchant extends Module
             return false;
         }
 
-        // Ensure the currency is valid and set to ZAR if not
-        $currency = $this->context->currency;
-
-        // If currency is not valid, set to default ZAR
-        if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
-            $currency = new Currency(Currency::getIdByIsoCode('ZAR'));
-            if (!isset($currency) || !is_object($currency) || empty($currency->iso_code)) {
-                $this->logError('Currency not properly set, defaulting to ZAR');
-                return false;
-            }
-        }
-
         $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
         $channel = $xml->addChild('channel');
         $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
@@ -134,7 +122,7 @@ class googlemerchant extends Module
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $currency->iso_code));
+            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency->iso_code));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
