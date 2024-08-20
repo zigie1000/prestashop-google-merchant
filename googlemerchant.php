@@ -122,7 +122,7 @@ class googlemerchant extends Module
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description_short'])));
-            $item->addChild('g:price', Tools::displayPrice($product['price'], $this->context->currency->iso_code));
+            $item->addChild('g:price', Tools::displayPrice($product['price'], isset($this->context->currency->iso_code) ? $this->context->currency->iso_code : 'ZAR'));
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
