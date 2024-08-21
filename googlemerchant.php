@@ -122,12 +122,11 @@ class googlemerchant extends Module
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
-            $currency = 'ZAR';  // Assuming South African Rands as the currency
-            $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ' . $currency);
+            $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ZAR');
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
-            $item->addChild('g:gtin', htmlspecialchars($product['ean13']) ?: '');
+            $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
 
