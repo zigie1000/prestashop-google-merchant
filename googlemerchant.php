@@ -130,11 +130,6 @@ class googlemerchant extends Module
             $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
-
-            // Additional fields expected by Google
-            $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
-            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
-            $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
         // Save the XML content to the feed.xml file
