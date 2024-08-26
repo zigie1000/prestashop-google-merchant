@@ -46,7 +46,7 @@ class googlemerchant extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url || empty($url)) {
+            if (!$url or empty($url)) {
                 $output .= $this->displayError($this->l('Invalid URL value'));
             } else {
                 Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
@@ -71,12 +71,12 @@ class googlemerchant extends Module
                         'name' => 'GOOGLEMERCHANT_FEED_URL',
                         'size' => 20,
                         'required' => true,
-                    )
+                    ),
                 ),
                 'submit' => array(
                     'title' => $this->l('Save'),
-                    'class' => 'btn btn-default pull-right'
-                )
+                    'class' => 'btn btn-default pull-right',
+                ),
             ),
         );
 
@@ -84,7 +84,7 @@ class googlemerchant extends Module
         $helper->show_toolbar = false;
         $helper->table = $this->table;
         $helper->module = $this;
-        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+        $helper->default_form_language = (int) Configuration::get('PS_LANG_DEFAULT');
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submit' . $this->name;
@@ -126,15 +126,13 @@ class googlemerchant extends Module
             $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
-            $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : 'not_available');
+            $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
 
-            // Mapping categories using a separate file
-            $item->addChild('g:google_product_category', $this->getGoogleProductCategory($product['category_name']));
-
             // Additional fields expected by Google
             $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
+            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
@@ -158,25 +156,6 @@ class googlemerchant extends Module
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
-    }
-
-    private function getGoogleProductCategory($categoryName)
-    {
-        // Load the CSV file
-        $csvFile = _PS_MODULE_DIR_ . 'googlemerchant/mapping.csv';
-        $handle = fopen($csvFile, 'r');
-
-        if ($handle !== FALSE) {
-            while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-                // Assuming that the CSV has 'category_name' in the first column and 'google_category_id' in the second
-                if (stripos($categoryName, $data[0]) !== FALSE) {
-                    fclose($handle);
-                    return $data[1];
-                }
-            }
-            fclose($handle);
-        }
-        return '';
     }
 
     private function logError($message)
