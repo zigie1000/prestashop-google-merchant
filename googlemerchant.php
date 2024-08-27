@@ -25,8 +25,8 @@ class googlemerchant extends Module
 
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
 
-        $this->feedFile = _PS_MODULE_DIR_ . 'modules/googlemerchant/feed.xml';
-        $this->logFile = _PS_MODULE_DIR_ . 'modules/googlemerchant/logs/feed_errors.log';
+        $this->feedFile = _PS_MODULE_DIR_ . 'googlemerchant/feed.xml';
+        $this->logFile = _PS_MODULE_DIR_ . 'googlemerchant/logs/feed_errors.log';
     }
 
     public function install()
