@@ -117,32 +117,36 @@ class googlemerchant extends Module
         $channel->addChild('description', $this->l('Product feed for Google Merchant Center'));
 
         foreach ($products as $product) {
-            $item = $channel->addChild('item');
-            $item->addChild('g:id', htmlspecialchars($product['id_product']));
-            $item->addChild('g:title', htmlspecialchars($product['name']));
-            $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
-            $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
-            $item->addChild('g:price', number_format($product['price'], 2, '.', '') . ' ZAR');
-            $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
-            $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
-            $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
-            $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : 'not available');
-            $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
-            $item->addChild('g:condition', 'new');
+    $item = $channel->addChild('item');
+    $item->addChild('g:id', htmlspecialchars($product['id_product']));
+    $item->addChild('g:title', htmlspecialchars($product['name']));
+    $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
+    $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
 
-            // Additional fields expected by Google
-            $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
-            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
-            $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
-        }
+    // Fix for price format
+    $price = number_format((float)$product['price'], 2, '.', '') . ' ZAR';
+    $item->addChild('g:price', $price);
 
-        // Save the XML content to the feed.xml file
-        $xml->asXML($this->feedFile);
+    $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
+    $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
+    $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
+    $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
+    $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
+    $item->addChild('g:condition', 'new');
 
-        // Output the XML content
-        header('Content-Type: application/xml; charset=utf-8');
-        echo $xml->asXML();
-        exit;
+    // Additional fields expected by Google
+    $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
+    $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
+    $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
+}
+
+// Save the XML content to the feed.xml file
+$xml->asXML($this->feedFile);
+
+// Output the XML content
+header('Content-Type: application/xml; charset=utf-8');
+echo $xml->asXML();
+exit;
     }
 
     public function getProducts()
