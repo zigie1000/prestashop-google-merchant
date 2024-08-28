@@ -8,7 +8,6 @@ class googlemerchant extends Module
 {
     private $feedFile;
     private $logFile;
-    private $mappingFile;
 
     public function __construct()
     {
@@ -28,7 +27,6 @@ class googlemerchant extends Module
 
         $this->feedFile = _PS_MODULE_DIR_ . 'googlemerchant/feed.xml';
         $this->logFile = _PS_MODULE_DIR_ . 'googlemerchant/logs/feed_errors.log';
-        $this->mappingFile = _PS_MODULE_DIR_ . 'googlemerchant/mapping.csv';
     }
 
     public function install()
@@ -124,18 +122,12 @@ class googlemerchant extends Module
             $item->addChild('g:title', htmlspecialchars($product['name']));
             $item->addChild('g:link', htmlspecialchars($this->context->link->getProductLink($product['id_product'], $product['link_rewrite'])));
             $item->addChild('g:description', htmlspecialchars(strip_tags($product['description'])));
-
+            
             // Fix for price format
             $price = number_format((float)$product['price'], 2, '.', '') . ' ZAR';
             $item->addChild('g:price', $price);
 
-            // Image link check
-            if (!empty($product['id_image'])) {
-                $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
-            } else {
-                $this->logError("Missing image for product ID " . $product['id_product']);
-            }
-
+            $item->addChild('g:image_link', htmlspecialchars($this->context->link->getImageLink($product['link_rewrite'], $product['id_image'])));
             $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock');
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
             $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : '');
@@ -144,7 +136,7 @@ class googlemerchant extends Module
 
             // Additional fields expected by Google
             $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
-            $item->addChild('g:google_product_category', htmlspecialchars($this->getGoogleCategory($product['category_name'])));
+            $item->addChild('g:google_product_category', isset($product['google_product_category']) ? htmlspecialchars($product['google_product_category']) : '');
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
         }
 
@@ -168,29 +160,6 @@ class googlemerchant extends Module
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
-    }
-
-    private function getGoogleCategory($categoryName)
-    {
-        $mapping = $this->readCategoryMapping();
-        return isset($mapping[$categoryName]) ? $mapping[$categoryName] : '';
-    }
-
-    private function readCategoryMapping()
-    {
-        if (!file_exists($this->mappingFile)) {
-            $this->logError('Mapping file not found.');
-            return [];
-        }
-
-        $mapping = [];
-        if (($handle = fopen($this->mappingFile, "r")) !== false) {
-            while (($data = fgetcsv($handle, 1000, ",")) !== false) {
-                $mapping[$data[0]] = $data[1];
-            }
-            fclose($handle);
-        }
-        return $mapping;
     }
 
     private function logError($message)
