@@ -46,7 +46,7 @@ class googlemerchant extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             $url = strval(Tools::getValue('GOOGLEMERCHANT_FEED_URL'));
-            if (!$url || empty($url)) {
+            if (!$url or empty($url)) {
                 $output .= $this->displayError($this->l('Invalid URL value'));
             } else {
                 Configuration::updateValue('GOOGLEMERCHANT_FEED_URL', $url);
@@ -193,7 +193,7 @@ class googlemerchant extends Module
                 JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
                 LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
-                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language.id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
@@ -203,5 +203,4 @@ class googlemerchant extends Module
     {
         file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
     }
-}
-            
+}            
