@@ -110,7 +110,7 @@ class googlemerchant extends Module
             return false;
         }
 
-        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
+        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss xmlns:g="http://base.google.com/ns/1.0" version="2.0"></rss>');
         $channel = $xml->addChild('channel');
         $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
@@ -140,8 +140,6 @@ class googlemerchant extends Module
             $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : 'null');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
-
-            // Additional fields expected by Google
             $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
             $item->addChild('g:google_product_category', $this->getGoogleCategory($product['id_category_default']));
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
@@ -156,7 +154,6 @@ class googlemerchant extends Module
         exit;
     }
 
-    
     private function getGoogleCategory($id_category)
     {
         // Fetch the category name from the database using the ID
@@ -164,14 +161,9 @@ class googlemerchant extends Module
 
         // Load the mapping from the CSV
         $mapping = $this->getCategoryMapping();
-        
-        // Return the mapped Google category or a default value
+
+        // Ensure minimal change: Return the mapped Google category or a default value
         return isset($mapping[$categoryName]) ? htmlspecialchars($mapping[$categoryName]) : 'Miscellaneous';
-    }
-    
-    {
-        $mapping = $this->getCategoryMapping();
-        return isset($mapping[$id_category]) ? htmlspecialchars($mapping[$id_category]) : 'Miscellaneous';
     }
 
     private function getCategoryMapping()
@@ -182,7 +174,9 @@ class googlemerchant extends Module
         if (file_exists($filePath)) {
             $handle = fopen($filePath, 'r');
             while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-                $mapping[$data[0]] = $data[1];
+                $prestashopCategory = trim($data[0]);  // Trimming any extra spaces
+                $googleCategory = trim($data[1]);  // Trimming any extra spaces
+                $mapping[$prestashopCategory] = $googleCategory;
             }
             fclose($handle);
         }
@@ -207,4 +201,4 @@ class googlemerchant extends Module
     {
         file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
     }
-}
+}            
