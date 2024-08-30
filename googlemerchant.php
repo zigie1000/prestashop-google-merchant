@@ -110,7 +110,7 @@ class googlemerchant extends Module
             return false;
         }
 
-        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss xmlns:g="http://base.google.com/ns/1.0" version="2.0"></rss>');
+        $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"></rss>');
         $channel = $xml->addChild('channel');
         $channel->addChild('title', Configuration::get('PS_SHOP_NAME'));
         $channel->addChild('link', Tools::getHttpHost(true) . __PS_BASE_URI__);
@@ -140,6 +140,8 @@ class googlemerchant extends Module
             $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : 'null');
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
+
+            // Additional fields expected by Google
             $item->addChild('g:product_type', htmlspecialchars($product['category_name']) ?? '');
             $item->addChild('g:google_product_category', $this->getGoogleCategory($product['id_category_default']));
             $item->addChild('g:shipping_weight', htmlspecialchars($product['weight']) . ' kg');
@@ -162,7 +164,7 @@ class googlemerchant extends Module
         // Load the mapping from the CSV
         $mapping = $this->getCategoryMapping();
 
-        // Ensure minimal change: Return the mapped Google category or a default value
+        // Return the mapped Google category or a default value
         return isset($mapping[$categoryName]) ? htmlspecialchars($mapping[$categoryName]) : 'Miscellaneous';
     }
 
@@ -191,7 +193,7 @@ class googlemerchant extends Module
                 JOIN ' . _DB_PREFIX_ . 'product_lang pl ON p.id_product = pl.id_product AND pl.id_lang = ' . (int)$this->context->language->id . '
                 LEFT JOIN ' . _DB_PREFIX_ . 'image i ON p.id_product = i.id_product AND i.cover = 1
                 LEFT JOIN ' . _DB_PREFIX_ . 'manufacturer m ON p.id_manufacturer = m.id_manufacturer
-                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . '
+                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON p.id_category_default = cl.id_category AND cl.id_lang = ' . (int)$this->context->language.id . '
                 WHERE p.active = 1';
 
         return Db::getInstance()->executeS($sql);
@@ -201,4 +203,5 @@ class googlemerchant extends Module
     {
         file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
     }
-}            
+}
+            
