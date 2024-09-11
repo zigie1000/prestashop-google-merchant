@@ -187,7 +187,9 @@ log_debug('Failed to add image_link: ' . htmlspecialchars($main_image_link) . ' 
 try { if (!empty($product['quantity'] > 0 ? 'in stock' : 'out of stock')) { if (!empty($product['quantity'] > 0 ? 'in stock' : 'out of stock')) { log_debug('Adding availability to XML: ' . $product['quantity'] > 0 ? 'in stock' : 'out of stock'); if (!empty($product['quantity'] > 0 ? 'in stock' : 'out of stock')) { log_debug('Availability before XML: ' . $product['quantity'] > 0 ? 'in stock' : 'out of stock'); if (!empty($product['quantity'] > 0 ? 'in stock' : 'out of stock')) { $item->addChild('g:availability', $product['quantity'] > 0 ? 'in stock' : 'out of stock'); } } } else { log_debug('Availability not added: ' . $product['quantity'] > 0 ? 'in stock' : 'out of stock'); } } else { log_debug('Availability not added: ' . $product['quantity'] > 0 ? 'in stock' : 'out of stock'); } } catch (Exception $e) {
 log_debug('Failed to add image_link: ' . htmlspecialchars($main_image_link) . ' with error: ' . $e->getMessage()); log_debug('Failed to add availability: ' . $product['quantity'] > 0 ? 'in stock' : 'out of stock'); }
             $item->addChild('g:brand', htmlspecialchars($product['manufacturer_name']) ?: 'Unknown');
-            $item->addChild('g:gtin', !empty($product['ean13']) ? htmlspecialchars($product['ean13']) : 'null');
+            if (!empty($product['ean13']) && strtolower($product['ean13']) != 'null') {
+    $item->addChild('g:gtin', htmlspecialchars($product['ean13']));
+}
             $item->addChild('g:mpn', htmlspecialchars($product['id_product']));
             $item->addChild('g:condition', 'new');
 
